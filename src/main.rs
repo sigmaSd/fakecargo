@@ -11,13 +11,13 @@ fn main() -> std::io::Result<()> {
     // create playground
     std::process::Command::new("cargo")
         .current_dir(&temp_dir)
-        .args(&["new", "rustbot"])
+        .args(&["new", "fakecargo"])
         .output()?;
 
     // playground dir
     let (playdir, playsrc) = {
         let mut d = temp_dir;
-        d.push("rustbot");
+        d.push("fakecargo");
         let mut s = d.clone();
         s.push(std::path::Path::new("src/main.rs"));
         (d, s)
