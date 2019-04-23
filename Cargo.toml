@@ -1,0 +1,7 @@
+[package]
+name = "fakecargo"
+version = "0.1.0"
+authors = ["Nbiba Bedis <bedisnbiba@gmail.com>"]
+edition = "2018"
+
+[dependencies]
