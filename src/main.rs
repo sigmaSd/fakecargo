@@ -3,20 +3,15 @@ fn main() {
 }
 
 fn run() -> std::io::Result<()> {
-    let temp_dir: std::path::PathBuf = std::env::temp_dir();
     let args: Vec<String> = std::env::args().skip(1).collect();
-    let mut playdir_state = vec![];
 
     let (mut cmd, mut script) = parse(args);
 
-    // playground dir
-    let (playdir, playsrc) = {
-        let mut d = temp_dir.clone();
-        d.push("fakecargo");
-        let mut s = d.clone();
-        s.push(std::path::Path::new("src/main.rs"));
-        (d, s)
-    };
+    // playground dir, src and state
+    let temp_dir: std::path::PathBuf = std::env::temp_dir();
+    let playdir = temp_dir.as_path().join("fakecargo");
+    let playsrc = playdir.join("src/main.rs");
+    let mut playdir_state = vec![];
 
     // create playground
     if std::path::Path::exists(&playdir) {
@@ -63,7 +58,7 @@ fn run() -> std::io::Result<()> {
     // to compare and know which files/dirs where added
     for entry in std::fs::read_dir(&playdir)? {
         let entry = entry?;
-        playdir_state.push(entry.file_name().into_string().unwrap());
+        playdir_state.push(entry.file_name());
     }
 
     // add script args to cmd if present
@@ -85,9 +80,11 @@ fn run() -> std::io::Result<()> {
     // TODO: Also handle created folders
     for entry in std::fs::read_dir(&playdir)? {
         let entry = entry?;
-        let entry_name = entry.file_name().into_string().unwrap();
-        if !playdir_state.contains(&entry_name) && entry.file_type()?.is_file() {
-            std::fs::copy(entry.path(), std::path::Path::new("./").join(&entry_name))?;
+        if !playdir_state.contains(&entry.file_name()) && entry.file_type()?.is_file() {
+            std::fs::copy(
+                entry.path(),
+                std::path::Path::new("./").join(&entry.file_name()),
+            )?;
         }
     }
 
@@ -97,7 +94,6 @@ fn run() -> std::io::Result<()> {
 fn parse(mut args: Vec<String>) -> (Vec<String>, Vec<String>) {
     // most common case `fakecargo cmd script`
     if args.len() == 2 {
-        //return (vec![args[0]], vec![args[1]])
         let script = args.pop().unwrap();
         let cmd = args.pop().unwrap();
         return (vec![cmd], vec![script]);
