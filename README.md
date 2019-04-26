@@ -9,8 +9,9 @@ fake cargo for single rust files
 
 `fakecargo -c flamegraph -s myawesome_rust_script.rs arg1 arg2`
 
-# Example: Use external dependencies with single scripts:
-**mycoolscript.rs:**
+ **Example: Use external dependencies with single script:**
+ 
+`mycoolscript.rs:`
 ```rust
 use secret_msg::SecretMessage;
 fn main() {
@@ -20,3 +21,7 @@ fn main() {
 `fakecargo -c add secret_msg -s mycoolscript.rs`
 
 `fakecargo r mycoolscript.rs`
+
+*Reset fakecargo:*
+
+`fakecargo fakeclean mycoolscript.rs`
