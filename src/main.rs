@@ -1,23 +1,29 @@
+use std::env::{args, temp_dir};
+use std::fs;
+use std::path::{Path, PathBuf};
+use std::process::{exit, Command};
+
 fn main() {
     run().expect("Something happened");
 }
 
 fn run() -> std::io::Result<()> {
-    let args: Vec<String> = std::env::args().skip(1).collect();
-
-    let (mut cmd, mut script) = parse(args);
-
     // playground dir, src and state
-    let temp_dir: std::path::PathBuf = std::env::temp_dir();
+    let temp_dir = temp_dir();
     let playdir = temp_dir.as_path().join("fakecargo");
     let playsrc = playdir.join("src/main.rs");
     let mut playdir_state = vec![];
 
-    // create playground
-    if std::path::Path::exists(&playdir) {
-        std::fs::remove_dir_all(&playdir)?;
+    // parse args
+    let args: Vec<String> = args().skip(1).collect();
+    // Clean and exit if specifed
+    if clean(&args, &playdir) {
+        return Ok(());
     }
-    std::process::Command::new("cargo")
+    let (mut cmd, mut script) = parse(args);
+
+    // create playground
+    Command::new("cargo")
         .current_dir(&temp_dir)
         .args(&["new", "fakecargo"])
         .output()?;
@@ -25,7 +31,7 @@ fn run() -> std::io::Result<()> {
     // simulate script enviorment by
     // symlinking all files and dirs in current dir to playdir
     // TODO: Fix this for windows
-    for entry in std::fs::read_dir(std::path::Path::new("./"))? {
+    for entry in fs::read_dir(Path::new("./"))? {
         let entry = entry?;
 
         let symlink_path = {
@@ -52,11 +58,11 @@ fn run() -> std::io::Result<()> {
     }
 
     // copy script to playground
-    std::fs::copy(&script[0], &playsrc)?;
+    fs::copy(&script[0], &playsrc)?;
 
     // save current playdir state so we can use it later
     // to compare and know which files/dirs where added
-    for entry in std::fs::read_dir(&playdir)? {
+    for entry in fs::read_dir(&playdir)? {
         let entry = entry?;
         playdir_state.push(entry.file_name());
     }
@@ -67,24 +73,21 @@ fn run() -> std::io::Result<()> {
     }
 
     // run cargo cmd
-    std::process::Command::new("cargo")
+    Command::new("cargo")
         .current_dir(&playdir)
         .args(&cmd)
         .spawn()?
         .wait()?;
 
     // Copy back the script
-    std::fs::copy(&playsrc, &script[0])?;
+    fs::copy(&playsrc, &script[0])?;
 
     // Add new created files to script real directory
     // TODO: Also handle created folders
-    for entry in std::fs::read_dir(&playdir)? {
+    for entry in fs::read_dir(&playdir)? {
         let entry = entry?;
         if !playdir_state.contains(&entry.file_name()) && entry.file_type()?.is_file() {
-            std::fs::copy(
-                entry.path(),
-                std::path::Path::new("./").join(&entry.file_name()),
-            )?;
+            fs::copy(entry.path(), Path::new("./").join(&entry.file_name()))?;
         }
     }
 
@@ -120,20 +123,28 @@ fn parse(mut args: Vec<String>) -> (Vec<String>, Vec<String>) {
     // exit if wrong usage
     if cmd.is_empty() || script.is_empty() {
         usage();
-        exit();
+        exit(0);
     }
 
     (cmd, script)
 }
 
+fn clean(args: &[String], playdir: &PathBuf) -> bool {
+    if args.contains(&"fakeclean".to_string()) {
+        let _ = fs::remove_dir_all(&playdir);
+        return true;
+    }
+    false
+}
+
 fn usage() {
     println!(
         "fakecargo \n
+        Fake cargo for single rust scripts\n
   Usage:\n
 	fakecargo cmd script \n
-	fakecargo -c cmd args -s script args"
+	fakecargo -c cmd args -s script args\n\n
+  To reset fakecargo:\n
+        fakecargo fakeclean script"
     );
-}
-fn exit() {
-    std::process::exit(0);
 }
