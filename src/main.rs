@@ -8,15 +8,16 @@ fn main() {
 }
 
 fn run() -> std::io::Result<()> {
-    // playground dir, src and state
+    // current_dir, playground dir, src and state
+    let current_dir = Path::new("./");
     let temp_dir = temp_dir();
     let playdir = temp_dir.as_path().join("fakecargo");
     let playsrc = playdir.join("src/main.rs");
     let mut playdir_state = vec![];
 
-    // parse args
+    // Parse args
     let args: Vec<String> = args().skip(1).collect();
-    // Clean and exit if specifed
+    // Clean(Hard reset) and exit if specifed
     if clean(&args, &playdir) {
         return Ok(());
     }
@@ -28,10 +29,26 @@ fn run() -> std::io::Result<()> {
         .args(&["new", "fakecargo"])
         .output()?;
 
+    // Get rid of a lot of problems by doing a soft reset
+    for entry in fs::read_dir(&playdir)? {
+        let entry = entry?;
+
+        if !["src", "Cargo.toml", "target"]
+            .contains(&entry.file_name().into_string().unwrap().as_str())
+        {
+            let path = entry.path();
+            if path.is_dir() {
+                let _ = fs::remove_dir_all(&path);
+            } else {
+                let _ = fs::remove_file(&path);
+            }
+        }
+    }
+
     // simulate script enviorment by
     // symlinking all files and dirs in current dir to playdir
     // TODO: Fix this for windows
-    for entry in fs::read_dir(Path::new("./"))? {
+    for entry in fs::read_dir(&current_dir)? {
         let entry = entry?;
 
         let symlink_path = {
@@ -82,12 +99,11 @@ fn run() -> std::io::Result<()> {
     // Copy back the script
     fs::copy(&playsrc, &script[0])?;
 
-    // Add new created files to script real directory
-    // TODO: Also handle created folders
+    // Add newly created files and dirs to script real directory
     for entry in fs::read_dir(&playdir)? {
         let entry = entry?;
-        if !playdir_state.contains(&entry.file_name()) && entry.file_type()?.is_file() {
-            fs::copy(entry.path(), Path::new("./").join(&entry.file_name()))?;
+        if !playdir_state.contains(&entry.file_name()) {
+            copy_entry(&entry.path(), &&current_dir.join(&entry.file_name()))?;
         }
     }
 
@@ -147,4 +163,20 @@ fn usage() {
   To reset fakecargo:\n
         fakecargo fakeclean script"
     );
+}
+
+fn copy_entry(src: &Path, dst: &Path) -> std::io::Result<()> {
+    if src.is_dir() {
+        let _ = fs::DirBuilder::new().create(&dst);
+
+        for sub_entry in fs::read_dir(src)? {
+            let sub_entry = sub_entry?;
+            let path = sub_entry.path();
+            let dst = dst.join(&path.file_name().unwrap());
+            copy_entry(&path, &dst)?;
+        }
+    } else {
+        fs::copy(src, dst)?;
+    }
+    Ok(())
 }
