@@ -1,6 +1,6 @@
 use std::env::{args, temp_dir};
 use std::fs;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::process::{exit, Command};
 
 fn main() {
@@ -8,25 +8,21 @@ fn main() {
 }
 
 fn run() -> std::io::Result<()> {
-    // current_dir, playground dir, src and state
-    let current_dir = Path::new("./");
-    let temp_dir = temp_dir();
-    let playdir = temp_dir.as_path().join("fakecargo");
-    let playsrc = playdir.join("src/main.rs");
-    let mut playdir_state = vec![];
-
     // Parse args
     let args: Vec<String> = args().skip(1).collect();
-    // Clean(Hard reset) and exit if specifed
-    if clean(&args, &playdir) {
-        return Ok(());
-    }
-    let (mut cmd, mut script) = parse(args);
+    let (cmd, script, project_name) = parse(args);
+
+    // current dir, playground dir, src, state and project name
+    let current_dir = Path::new("./");
+    let temp_dir = temp_dir();
+    let playdir = temp_dir.as_path().join(&project_name);
+    let playsrc = playdir.join("src/main.rs");
+    let mut playdir_state = vec![];
 
     // create playground
     Command::new("cargo")
         .current_dir(&temp_dir)
-        .args(&["new", "fakecargo"])
+        .args(&["new", &project_name])
         .output()?;
 
     // Get rid of a lot of problems by doing a soft reset
@@ -75,18 +71,13 @@ fn run() -> std::io::Result<()> {
     }
 
     // copy script to playground
-    fs::copy(&script[0], &playsrc)?;
+    fs::copy(&script, &playsrc)?;
 
     // save current playdir state so we can use it later
     // to compare and know which files/dirs where added
     for entry in fs::read_dir(&playdir)? {
         let entry = entry?;
         playdir_state.push(entry.file_name());
-    }
-
-    // add script args to cmd if present
-    if script.len() > 1 {
-        cmd.append(&mut script.split_off(1));
     }
 
     // run cargo cmd
@@ -97,7 +88,7 @@ fn run() -> std::io::Result<()> {
         .wait()?;
 
     // Copy back the script
-    fs::copy(&playsrc, &script[0])?;
+    fs::copy(&playsrc, &script)?;
 
     // Add newly created files and dirs to script real directory
     for entry in fs::read_dir(&playdir)? {
@@ -110,12 +101,20 @@ fn run() -> std::io::Result<()> {
     Ok(())
 }
 
-fn parse(mut args: Vec<String>) -> (Vec<String>, Vec<String>) {
+fn parse(mut args: Vec<String>) -> (Vec<String>, String, String) {
     // most common case `fakecargo cmd script`
     if args.len() == 2 {
         let script = args.pop().unwrap();
         let cmd = args.pop().unwrap();
-        return (vec![cmd], vec![script]);
+        let project_name = project_from_script(&script);
+
+        // Clean(Hard reset) and exit if specifed
+        // fakecargo fakeclean script
+        if clean(&args, &project_name) {
+            exit(0);
+        }
+
+        return (vec![cmd], script, project_name);
     }
 
     // if its more then 3 look for flags -c -s
@@ -142,29 +141,28 @@ fn parse(mut args: Vec<String>) -> (Vec<String>, Vec<String>) {
         exit(0);
     }
 
-    (cmd, script)
+    // add script args to cmd if present
+    if script.len() > 1 {
+        cmd.append(&mut script.split_off(1));
+    }
+
+    let script = script.pop().unwrap();
+    let project_name = project_from_script(&script);
+
+    (cmd, script, project_name)
 }
 
-fn clean(args: &[String], playdir: &PathBuf) -> bool {
+fn clean(args: &[String], project_name: &str) -> bool {
     if args.contains(&"fakeclean".to_string()) {
+        let playdir = temp_dir().as_path().join(&project_name);
+
         let _ = fs::remove_dir_all(&playdir);
         return true;
     }
     false
 }
 
-fn usage() {
-    println!(
-        "fakecargo \n
-        Fake cargo for single rust scripts\n
-  Usage:\n
-	fakecargo cmd script \n
-	fakecargo -c cmd args -s script args\n\n
-  To reset fakecargo:\n
-        fakecargo fakeclean script"
-    );
-}
-
+// helper functions
 fn copy_entry(src: &Path, dst: &Path) -> std::io::Result<()> {
     if src.is_dir() {
         let _ = fs::DirBuilder::new().create(&dst);
@@ -179,4 +177,26 @@ fn copy_entry(src: &Path, dst: &Path) -> std::io::Result<()> {
         fs::copy(src, dst)?;
     }
     Ok(())
+}
+
+fn project_from_script(script: &str) -> String {
+    Path::new(&script.replace(".rs", ""))
+        .file_name()
+        .expect("Please specify a valid script to run")
+        .to_str()
+        .unwrap()
+        .to_owned()
+}
+
+// Usage
+fn usage() {
+    println!(
+        "fakecargo \n
+        Fake cargo for single rust scripts\n
+  Usage:\n
+	fakecargo cmd script \n
+	fakecargo -c cmd args -s script args\n\n
+  To reset fakecargo:\n
+        fakecargo fakeclean script"
+    );
 }
