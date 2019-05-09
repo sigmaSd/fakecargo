@@ -52,18 +52,16 @@ fn run() -> std::io::Result<()> {
             d.push(entry.file_name());
             d
         };
-        if cfg!(target_os = "linux") {
-            let _ = std::os::unix::fs::symlink(entry.path().canonicalize()?, symlink_path);
-        }
+        #[cfg(target_os = "linux")]
+        let _ = std::os::unix::fs::symlink(entry.path().canonicalize()?, symlink_path);
         // Not tested on windows
-        else if cfg!(target_os = "windows") {
-            //On Windows, you must specify whether a symbolic link points to a file or directory why???
+        //On Windows, you must specify whether a symbolic link points to a file or directory why???
+        #[cfg(target_os = "windows")]
+        {
             if entry.file_type()?.is_file() {
-                #[cfg(target_os = "windows")]
                 let _ =
                     std::os::windows::fs::symlink_file(entry.path().canonicalize()?, symlink_path);
             } else if entry.file_type()?.is_dir() {
-                #[cfg(target_os = "windows")]
                 let _ =
                     std::os::windows::fs::symlink_dir(entry.path().canonicalize()?, symlink_path);
             }
