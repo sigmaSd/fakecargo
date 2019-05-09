@@ -1,6 +1,6 @@
 use std::env::{args, temp_dir};
 use std::fs;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::process::{exit, Command};
 
 fn main() {
@@ -99,7 +99,7 @@ fn run() -> std::io::Result<()> {
     Ok(())
 }
 
-fn parse(mut args: Vec<String>) -> (Vec<String>, String, String) {
+fn parse(mut args: Vec<String>) -> (Vec<String>, PathBuf, String) {
     // most common case `fakecargo cmd script`
     if args.len() == 2 {
         let script = args.pop().unwrap();
@@ -108,11 +108,11 @@ fn parse(mut args: Vec<String>) -> (Vec<String>, String, String) {
 
         // Clean(Hard reset) and exit if specifed
         // fakecargo fakeclean script
-        if clean(&args, &project_name) {
+        if clean(&cmd, &project_name) {
             exit(0);
         }
 
-        return (vec![cmd], script, project_name);
+        return (vec![cmd], Path::new(&script).to_path_buf(), project_name);
     }
 
     // if its more then 3 look for flags -c -s
@@ -147,11 +147,11 @@ fn parse(mut args: Vec<String>) -> (Vec<String>, String, String) {
     let script = script.pop().unwrap();
     let project_name = project_from_script(&script);
 
-    (cmd, script, project_name)
+    (cmd, Path::new(&script).to_path_buf(), project_name)
 }
 
-fn clean(args: &[String], project_name: &str) -> bool {
-    if args.contains(&"fakeclean".to_string()) {
+fn clean(cmd: &str, project_name: &str) -> bool {
+    if cmd == "fakeclean" {
         let playdir = temp_dir().as_path().join(&project_name);
 
         let _ = fs::remove_dir_all(&playdir);
