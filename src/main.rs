@@ -100,6 +100,20 @@ fn run() -> std::io::Result<()> {
 }
 
 fn parse(mut args: Vec<String>) -> (Vec<String>, PathBuf, String) {
+    // look for help
+    if args.contains(&"-h".to_string()) | args.contains(&"--help".to_string()) {
+        usage();
+        std::process::exit(0)
+    }
+    // New: special case `fakecargo script`
+    // Since its actually whats most commenly used
+    if args.len() == 1 {
+        let script = args.pop().unwrap();
+        let cmd = String::from("run");
+        let project_name = project_from_script(&script);
+        return (vec![cmd], Path::new(&script).to_path_buf(), project_name);
+    }
+
     // most common case `fakecargo cmd script`
     if args.len() == 2 {
         let script = args.pop().unwrap();
@@ -192,6 +206,7 @@ fn usage() {
         "fakecargo \n
         Fake cargo for single rust scripts\n
   Usage:\n
+	fakecargo script /* defaults to run the script */\n
 	fakecargo cmd script \n
 	fakecargo -c cmd args -s script args\n\n
   To reset fakecargo:\n
