@@ -9,6 +9,8 @@ fake cargo for single rust files
 
 `fakecargo flamegraph myawesome_rust_script.rs -- arg1 arg2`
 
+`fakecargo compile myawesome_rust_script.rs` => build script in release mode and print its path
+
  **Example: Use external dependencies with single script (Requires `cargo-edit`):**
  
 `mycoolscript.rs:`
