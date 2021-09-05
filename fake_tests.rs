@@ -32,6 +32,17 @@ fn main() -> Result<()> {
     let out = cmd!("{compiled_path} hello-compiled").read()?;
     assert_eq!(out, "hello-compiled");
 
+    let file = scaffold(
+        &dir,
+        stringify!(
+            fn main() {
+                println!("{}", std::env::args().nth(1).unwrap());
+            }
+        ),
+    )?;
+    let out = cmd!("cargo run -- run --offline {file} -- arg1").read()?;
+    assert_eq!(out, "arg1");
+
     Ok(())
 }
 

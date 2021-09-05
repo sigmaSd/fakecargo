@@ -29,14 +29,18 @@ fn parse(args: Vec<String>, should_print_exe_path: &mut bool) -> Plan {
         }
         [script] => Plan::default().set_cmd("run").set_script(script),
         [cmd, script] => Plan::default().set_cmd(cmd).set_script(script),
-        [cmd, script, "--", script_args @ ..] => Plan::default()
-            .set_cmd(cmd)
-            .set_script(script)
-            .set_script_args(script_args),
-        [cmd, cmd_args @ .., script] => Plan::default()
-            .set_cmd(cmd)
-            .set_cmd_args(cmd_args)
-            .set_script(script),
+        args => match args.split_at(args.iter().position(|pat| pat == &"--").unwrap_or(0)) {
+            ([], [cmd, cmd_args @ .., script]) => Plan::default()
+                .set_cmd(cmd)
+                .set_cmd_args(cmd_args)
+                .set_script(script),
+            ([cmd, cmd_args @ .., script], ["--", script_args @ ..]) => Plan::default()
+                .set_cmd(cmd)
+                .set_script(script)
+                .set_cmd_args(cmd_args)
+                .set_script_args(script_args),
+            _ => usage_and_exit(),
+        },
     }
 }
 
