@@ -2,12 +2,17 @@ use fakecargo::{Plan, Result};
 
 fn main() -> Result<()> {
     let args: Vec<String> = std::env::args().skip(1).collect();
-    let plan = parse(args);
+    let mut should_print_exe_path = false;
+    let plan = parse(args, &mut should_print_exe_path);
     let build = plan.build()?;
-    build.run()
+    build.run()?;
+    if should_print_exe_path {
+        println!("Compiled to: {}", build.executable().display());
+    }
+    Ok(())
 }
 
-fn parse(args: Vec<String>) -> Plan {
+fn parse(args: Vec<String>, should_print_exe_path: &mut bool) -> Plan {
     match &args
         .iter()
         .map(|v| v.as_str())
@@ -15,6 +20,13 @@ fn parse(args: Vec<String>) -> Plan {
         .as_slice()
     {
         [] | ["-h"] | ["--help"] => usage_and_exit(),
+        ["compile", script] => {
+            *should_print_exe_path = true;
+            Plan::default()
+                .set_cmd("build")
+                .set_cmd_args(&["--release"])
+                .set_script(script)
+        }
         [script] => Plan::default().set_cmd("run").set_script(script),
         [cmd, script] => Plan::default().set_cmd(cmd).set_script(script),
         [cmd, script, "--", script_args @ ..] => Plan::default()

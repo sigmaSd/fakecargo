@@ -128,7 +128,7 @@ impl Build {
         self.fake_dir().join("src/main.rs")
     }
 
-    fn executable(&self) -> PathBuf {
+    pub fn executable(&self) -> PathBuf {
         let target_dir = if let Ok(target_dir) = std::env::var("CARGO_TARGET_DIR") {
             target_dir.into()
         } else {
