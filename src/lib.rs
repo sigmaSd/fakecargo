@@ -94,12 +94,15 @@ impl Build {
     fn execute(&self) -> Result<()> {
         if &self.cmd == "run" || &self.cmd == "r" {
             // run cargo cmd
-            Command::new("cargo")
+            let status = Command::new("cargo")
                 .arg("build")
                 .args(&self.cmd_args)
                 .current_dir(&self.fake_dir())
                 .spawn()?
                 .wait()?;
+            if !status.success() {
+                return Err("failed to build script".into());
+            }
 
             Command::new(self.executable())
                 .args(&self.script_args)
