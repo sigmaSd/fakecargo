@@ -1,7 +1,7 @@
-# fakecargo
+# Fakecargo
 fake cargo for single rust files
 
-# Usecases examples:
+# Use-cases examples:
 
 `fakecargo fmt myawesome_rust_script.rs`
 
@@ -21,3 +21,8 @@ fn main() {
 `fakecargo add secret_msg mycoolscript.rs`
 
 `fakecargo mycoolscript.rs`
+
+# Shell replacement example
+See `fake_tests.rs`, to run it:
+- `fakecargo add xshell fake_tests.rs`
+- `fakecargo fake_tests.rs`
