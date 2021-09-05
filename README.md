@@ -7,9 +7,9 @@ fake cargo for single rust files
 
 `fakecargo clippy myawesome_rust_script.rs`
 
-`fakecargo -c flamegraph -s myawesome_rust_script.rs arg1 arg2`
+`fakecargo flamegraph myawesome_rust_script.rs -- arg1 arg2`
 
- **Example: Use external dependencies with single script:**
+ **Example: Use external dependencies with single script (Requires `cargo-edit`):**
  
 `mycoolscript.rs:`
 ```rust
@@ -18,10 +18,6 @@ fn main() {
   println!("{}", "hello".one_way_encrypt());
 }
 ```
-`fakecargo -c add secret_msg -s mycoolscript.rs`
+`fakecargo add secret_msg mycoolscript.rs`
 
-`fakecargo r mycoolscript.rs`
-
-*Reset fakecargo:*
-
-`fakecargo fakeclean mycoolscript.rs`
+`fakecargo mycoolscript.rs`
